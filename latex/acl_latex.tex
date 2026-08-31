@@ -1,0 +1,485 @@
+\documentclass[11pt]{article}
+
+% Change "review" to "final" to generate the final (camera-ready) version.
+\usepackage[final]{acl}
+
+% Standard package includes
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{float}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{stfloats}
+\usepackage{hyperref}
+
+\title{Does Typological Distance Affect Cross-lingual Transfer?}
+
+\author{Pengfei Ren \\
+  School of Artificial Intelligence, Nanjing University \\
+  \texttt{pengfeiren@smail.nju.edu.cn} \\
+  \href{https://github.com/Nonepf/multilang-babylm}{\texttt{github.com/Nonepf/multilang-babylm}}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+The Contrastive-Analysis Hypothesis (CAH) \citep{Lado1957} proposes that similarities between a learner's first language (L1) and second language (L2) can facilitate L2 learning, while differences can make it more difficult. We ask a related computational question: under a limited, developmentally motivated data budget, does a coarse near/far relation between L1 and L2 predict grammatical performance when a language model is trained first on L1 and then on L2? We train GPT-2 Small models from scratch on English, Dutch, or Chinese with a fixed Qwen2.5 tokenizer, and continue training them on the corresponding L2 targets. Across five seeds, we compare zero-shot starting scores, terminal L2 scores, Transfer Increment (TI; terminal minus zero-shot), and Transfer Benefit (TB; terminal minus a same-budget target-only baseline). For English, NL$\rightarrow$EN and ZH$\rightarrow$EN have nearly identical TI. For Dutch, the near-L1 condition has a larger TI, but most of this difference comes from the zero-shot starting scores, while the terminal scores differ by only 0.9 percentage points. Headroom-normalized TI gives the same target-dependent picture. Across the tested pairs, the near/far contrast therefore does not produce a uniform, target-independent advantage for the near L1.
+
+\end{abstract}
+
+\section{Introduction}
+
+This work is inspired by human second-language (L2) learning. A long-standing idea in second-language acquisition is that learning an L2 can be influenced by a learner's first language (L1). In the Contrastive-Analysis Hypothesis (CAH), \citet{Lado1957} proposed that linguistic features shared by the L1 and L2 can facilitate learning, whereas differences can create difficulties. Later SLA research refined this strong formulation and developed more nuanced accounts of cross-linguistic influence~\citep{Odlin1989,Ringbom2006,JarvisPavlenko2008}.
+
+In recent years, a related question has also been studied in NLP, with the learner replaced by a pretrained language model. Work on multilingual models has found that zero-shot performance varies across source--target language pairs and is often related to their linguistic similarity~\citep{pires-etal-2019-multilingual,lauscher-etal-2020-zero}. Much of this work studies models jointly pretrained on many languages. Another line of research instead considers sequential exposure, where a model is trained first on one language and then on another~\citep{oba-etal-2023-second,yadavalli-etal-2023-slabert,gogoulou-etal-2024-continual-clean}. We follow this sequential L1$\rightarrow$L2 setting under a restricted data budget.
+
+We use the English, Dutch, and Chinese corpora from BabyBabelLM~\citep{jumelet-etal-2026-babybabellm}. Unlike typical Web corpora, BabyBabelLM is curated to better approximate the linguistic input available from birth and is built around a bounded data budget. We use these two properties to make the training setting more developmentally motivated. The analogy concerns the data and exposure budget rather than the full learning process: the models remain Transformers trained with next-token prediction, a fixed subword vocabulary, and standard neural optimization.
+
+English and Dutch form our coarse ``near'' condition because both are West Germanic languages written in Latin script. Chinese paired with either Germanic language forms the coarse ``far'' condition. These pairs differ not only in genealogy, but also in script, lexical and token overlap, and a range of structural properties. Following the concerns about how typological diversity is operationalized in NLP~\citep{ploeger-etal-2026-principled}, we use \emph{near} and \emph{far} as categorical condition labels rather than as numerical measurements of language distance.
+
+Using these datasets, we train GPT-2 models~\citep{Radford2019LanguageMA} from scratch with a fixed Qwen2.5 tokenizer~\citep{qwen2025qwen25technicalreport}. We ask: \textbf{Within this three-language design, does the coarse near/far L1 contrast consistently predict L2 grammatical outcomes during sequential training?}
+
+The pattern differs across targets and metrics. For English, the near and far conditions show almost identical Phase~2 increments. For Dutch, the near condition has a larger increment, but much of that difference comes from its lower zero-shot starting score; the terminal scores differ by only 0.9 percentage points (pp). Across the two targets, the experiments do not show a consistent near-L1 advantage.
+
+\section{Related Work}
+
+\subsection{Cross-lingual Transfer and Typological Distance}
+
+Cross-lingual transfer has been widely studied in massively multilingual pretrained models such as mBERT~\citep{devlin2019bertpretrainingdeepbidirectional} and XLM-R~\citep{conneau-etal-2020-unsupervised}. Their zero-shot performance varies substantially across source--target language pairs, and linguistic similarity is one factor associated with this variation. For example, \citet{pires-etal-2019-multilingual} found stronger mBERT transfer between typologically similar languages and identified shared word-order features as one useful predictor. \citet{lauscher-etal-2020-zero} further examined how linguistic proximity and other factors shape zero-shot transfer.
+
+Typological ``distance'' can refer to different properties. Languages vary in genealogy, syntax, morphology, script, and lexicon, while observed model behavior can also depend on corpora and tokenization. \citet{ploeger-etal-2024-typological} show that typological diversity has been operationalized inconsistently in NLP, and \citet{ploeger-etal-2026-principled} propose a principled framework for selecting and evaluating typologically diverse language samples.
+
+For each target, the near and far conditions use the same L2 corpus and evaluation suite, while their L1 sources differ in script, lexical and token overlap, corpus statistics, and Phase~1 exposure. The comparison therefore asks whether this coarse near/far grouping predicts the expected ordering of L2 outcomes within a fixed target, rather than assigning a numerical effect size to typological distance itself.
+
+\subsection{Computational SLA and Sequential Transfer}
+
+Computational models of SLA long predate Transformers. \citet{Gasser1990}, for example, trained a connectionist network first on L1 patterns and then on L2 patterns to model constituent-order transfer, while later work varied the amount and onset of L1/L2 exposure~\citep{MATUSEVYCH-ALISHAHI-BACKUS-2017}. These studies make the assumed learning process explicit. A related caution is raised by \citet{cotterell2026surprisal} in the context of surprisal theory: cognitive interpretations require independently motivated constraints on the model rather than behavioral fit alone. In this paper, SLA motivates the question and training order; GPT-2 itself is not intended as a literal model of a child learner.
+
+Cross-lingual transfer does not require joint multilingual pretraining. \citet{artetxe-etal-2020-cross} showed that monolingual representations can support transfer to a new language even without shared vocabulary or joint training. More directly related to our setup, several studies train on an L1 before introducing an L2. \citet{oba-etal-2023-second} found that L1 pretraining can accelerate later linguistic generalization depending on the L1 and transfer configuration. \citet{yadavalli-etal-2023-slabert} observed more negative transfer between more distant language families in an age-ordered child-directed-speech setting. From a continual-learning perspective, \citet{gogoulou-etal-2024-continual-clean} found that forward and backward transfer depend on language order and language characteristics, including syntactic similarity and possible contamination. We use the same broad sequential idea, with two fixed-target near/far comparisons, target-only references, and five random seeds.
+
+Our focus is narrower: under BabyLM-scale data constraints, does the coarse near/far contrast predict L2 grammatical outcomes when the target corpus and evaluation are fixed? We report performance before L2 exposure, improvement during L2 training, and terminal performance separately so that the starting state, the Phase~2 change, and the final outcome remain distinguishable.
+
+\subsection{Data-Constrained Language Modeling}
+BabyLM studies language modeling under restricted data budgets~\citep{choshen2026babylmturns4goes}. BabyBabelLM extends this setting to 45 languages and curates corpora intended to approximate linguistic input observed from birth~\citep{jumelet-etal-2026-babybabellm}. Comparing data budgets across languages requires a common reference because writing systems and encodings differ. Byte Premium is defined following \citet{arnett-etal-2024-bit}; the Dutch and Chinese coefficients used here are the BabyLM 2026 values reported by \citep{choshen2026babylmturns4goes}. We use their published values as scaling factors for our per-language extraction, described below.
+
+\section{Methodology}
+
+\subsection{Model Architecture}
+We use GPT-2 Small~\citep{Radford2019LanguageMA}, with 12 Transformer layers, a hidden size of 768, 12 attention heads, and a 512-token context window. All model weights are initialized randomly.
+
+Our preliminary diagnostics showed that the standard GPT-2 byte-level tokenizer fragments Chinese heavily, producing 2.17 tokens per character. We therefore use the Qwen2.5-0.5B tokenizer~\citep{qwen2025qwen25technicalreport}. With this tokenizer, the measured token-to-unit ratios are 1.20 for English words, 1.70 for Dutch words, and 0.70 for Chinese characters (Appendix~\ref{sec:appendix-twr}). Its vocabulary contains 151,665 entries. Because GPT-2 ties the input and output embeddings, the embedding matrix contributes 116.5M parameters, or about 58\% of the resulting 201.9M-parameter model.
+
+The tokenizer, vocabulary, and embedding dimensionality are fixed across all languages, conditions, and phases. A model trained only on L1 therefore has token \emph{IDs} that can represent L2 strings, but all embedding rows begin from random initialization and are updated only through the model's own training data; no pretrained Qwen embeddings or lexical meanings are imported. Fixing the tokenizer keeps the model shape identical across conditions and allows Phase~1 checkpoints to be continued directly in Phase~2. Pairwise script and token overlap can still vary under this shared vocabulary, so the tokenizer is treated as a controlled part of the setup rather than as an explanation of the transfer pattern.
+
+\subsection{Data Preparation}
+We use \texttt{BabyLM-2026-Strict} for English, \texttt{babylm-nld} for Dutch, and \texttt{babylm-zho} for Chinese from BabyBabelLM~\citep{jumelet-etal-2026-babybabellm}. English and Dutch are counted in whitespace-delimited words. Chinese is counted in characters because the corpus does not have a universal whitespace word boundary. Table~\ref{tab:data-prep} gives the extraction used in our runs. For each phase, we targeted 50M ``effective words'' by dividing this value by the published language-specific Byte Premium~\citep{arnett-etal-2024-bit}.
+
+\begin{table*}[tb]
+\centering
+\small
+\begin{tabular}{lccc}
+\hline
+\textbf{Language} & \textbf{Byte Premium} & \textbf{Counting Units per Phase} & \textbf{Qwen2.5 Tokens} \\ \hline
+English  & 1.0000 & 50.0M words   & $\sim$60.0M \\
+Dutch    & 1.0516 & 47.5M words   & $\sim$80.8M \\
+Chinese  & 0.9894 & 50.5M chars   & $\sim$35.4M \\ \hline
+\end{tabular}
+\caption{Data allocation used in the experiments. English and Dutch are measured in whitespace-delimited words, while Chinese is measured in characters. Byte Premium values follow \citet{arnett-etal-2024-bit}.}
+\label{tab:data-prep}
+\end{table*}
+
+Character counting avoids choosing a particular Chinese word-segmentation scheme, but it also means that the counting unit differs from English and Dutch. In addition, Byte Premium is defined over bytes rather than over a mixture of word and character counts. We keep the extraction used in the original runs; the resulting byte and update counts are reported in Appendix~\ref{sec:appendix-twr}.
+
+\subsection{Training Pipeline}
+All runs use the same training configuration: AdamW, a cosine learning-rate schedule with a peak of $5\times10^{-4}$, an effective batch size of 65,536 tokens per update, and BF16 precision. These GPT-2/BabyLM-style settings were chosen before the comparison rather than through a condition-specific hyperparameter search. Appendix~\ref{sec:appendix-hyper} lists the full configuration and update counts.
+
+Training has two phases:
+\begin{itemize}
+    \item \textbf{Phase 1 (L1 pretraining):} Each model is trained from random initialization on English, Dutch, or Chinese for one pass over the allocated corpus (Table~\ref{tab:data-prep}).
+    \item \textbf{Phase 2 (L1$\rightarrow$L2 continuation):} We load the Phase~1 model weights and continue training all parameters on the L2 corpus. The optimizer state is reset: each Phase~2 run starts with a new AdamW optimizer and a fresh cosine schedule peaking at $5\times10^{-4}$. No replay or continual-learning regularizer is used.
+\end{itemize}
+
+The extracted corpora contain different numbers of tokens, giving 916 Phase~1 updates for EN, 1,234 for NL, and 540 for ZH. The English and Dutch target phases contain 916 and 1,234 updates, respectively. Table~\ref{tab:data-prep} and Appendix~\ref{sec:appendix-hyper} make these source-side exposure differences explicit.
+
+\subsection{Evaluation}
+We evaluate grammatical minimal-pair accuracy using the BabyLM \texttt{lm-eval} configurations~\citep{choshen2026babylmturns4goes}. The benchmarks are BLiMP for English~\citep{warstadt-etal-2020-blimp-benchmark}, BLiMP-NL for Dutch~\citep{suijkerbuijk-etal-2025-blimp}, and ZhoBLiMP for Chinese~\citep{liu-etal-2026-systematic}. A minimal pair is counted as correct when the model assigns higher log-likelihood to the grammatical sentence. Chance accuracy is 50\%.
+
+\begin{table*}[tb]
+\centering
+\small
+\begin{tabular}{llllc}
+\hline
+\textbf{Language} & \textbf{Configuration} & \textbf{Benchmark} \\ \hline
+English & \texttt{blimp\_babylm\_filtered} & BLiMP\% \\
+Dutch & \texttt{blimp\_nl} & BLiMP-NL\% \\
+Chinese & \texttt{zhoblimp} & ZhoBLiMP\% \\ \hline
+\end{tabular}
+\caption{Minimal-pair evaluation suites used in the experiments. The three suites cover different languages and grammatical phenomena, so comparisons are made within each target language.}
+\label{tab:evaluation-suites}
+\end{table*}
+
+For a fixed source $X$, target $Y$, and seed, let $A_{\mathrm{ZS}}$ be the Phase~1 model's accuracy on $Y$ before L2 exposure, $A_{\mathrm{term}}$ the corresponding Phase~2 terminal accuracy, and $A_{\mathrm{target}}$ the same-seed target-only model's accuracy after one target-language budget. We report three derived quantities:
+\begin{equation}
+\begin{aligned}
+\mathrm{TI}  &= A_{\mathrm{term}}-A_{\mathrm{ZS}},\\
+\mathrm{nTI}&= \frac{A_{\mathrm{term}}-A_{\mathrm{ZS}}}{1-A_{\mathrm{ZS}}},\\
+\mathrm{TB} &= A_{\mathrm{term}}-A_{\mathrm{target}}.
+\end{aligned}
+\label{eq:metrics}
+\end{equation}
+TI measures how much a model improves during Phase~2 from its L1-derived starting point. Because the available room for improvement depends on the zero-shot score, we also report normalized TI (nTI), the fraction of the remaining accuracy headroom recovered during Phase~2. TB compares the terminal sequential model with a target-only model trained on the same L2 budget. Thus, TI describes change during L2 training, whereas TB describes the terminal advantage over the target-only reference. The sequential model has also received Phase~1 training, so TB is a terminal reference comparison rather than a compute-matched effect estimate.
+
+All near/far comparisons are made within the \emph{same target suite}. English BLiMP and Dutch BLiMP-NL probe different sets of phenomena, so their absolute scores and gain magnitudes are not placed on a common scale. Appendix~\ref{sec:appendix-ti} gives the per-seed derivations, and Appendix~\ref{sec:appendix-results} reports all 35 evaluation rows.
+
+\subsection{Experimental Design}
+We use five random seeds (42, 123, 456, 789, 1024), giving 35 training runs across seven conditions:
+\begin{itemize}
+    \item \textbf{Phase 1 L1-only Baselines} (3 conditions $\times$ 5 seeds = 15 runs):
+        EN-only, NL-only, ZH-only.
+    \item \textbf{Phase 2 Transfer Conditions} (4 conditions $\times$ 5 seeds = 20 runs):
+        NL$\rightarrow$EN (main test, near-L1), ZH$\rightarrow$EN (main test, far-L1),
+        EN$\rightarrow$NL (auxiliary, near-L1), ZH$\rightarrow$NL (auxiliary, far-L1).
+\end{itemize}
+
+We report the mean and sample standard deviation across the five seeds, together with the full per-seed results in the appendix. Small between-condition differences are interpreted descriptively.
+
+\section{Results}
+
+\subsection{Phase 1: Same-language and Zero-shot Scores}
+
+Table~\ref{tab:phase1-matrix} shows the complete Phase~1 evaluation matrix. The diagonal entries are same-language references, while the off-diagonal entries are zero-shot scores before any L2 exposure. All three diagonal means are above chance. Because each column uses a different benchmark suite, the useful comparisons are within columns rather than across target languages.
+
+\begin{table*}[tb]
+\centering
+\small
+\begin{tabular}{lccc}
+\hline
+\textbf{Phase~1 Language} & \textbf{English BLiMP} & \textbf{Dutch BLiMP-NL} & \textbf{Chinese ZhoBLiMP} \\ \hline
+English & \textbf{60.1\%} & 49.4\% & 48.1\% \\
+Dutch   & 54.6\% & \textbf{71.0\%} & 50.6\% \\
+Chinese & 50.5\% & 51.9\% & \textbf{63.2\%} \\ \hline
+\end{tabular}
+\caption{Complete Phase~1 evaluation matrix (means over five seeds). Bold diagonal cells are same-language references and off-diagonal cells are zero-shot evaluations. Comparisons are made within columns, where the target language and benchmark suite are fixed.}
+\label{tab:phase1-matrix}
+\end{table*}
+
+For the English target, Dutch pretraining gives a zero-shot score of 54.6\%, compared with 50.5\% after Chinese pretraining, a difference of 4.1 pp. The near condition therefore begins English training from a higher grammatical score. This starting difference may reflect several properties that co-vary between the two source languages, including linguistic structure, script and token overlap, corpus content, and Phase~1 exposure.
+
+In the reverse direction, English pretraining gives 49.4\% on Dutch. This should not be read as a direct reversal of the Dutch$\rightarrow$English result, because the two values come from different target suites and different training conditions. The directional comparison is therefore less informative than the fixed-target near/far comparisons used below.
+
+\subsection{Phase 2: Target-wise Comparisons}
+
+Table~\ref{tab:transfer-summary} summarizes the Phase~2 results as means and standard deviations; the per-seed values are given in Appendices~\ref{sec:appendix-results} and~\ref{sec:appendix-ti}. For English, NL$\rightarrow$EN and ZH$\rightarrow$EN have almost the same TI (10.4 vs.\ 10.8 pp). Their normalized TI is also close (22.8\% vs.\ 21.6\% of the available headroom). The terminal English score is nevertheless 3.7 pp higher after Dutch pretraining, matching the 3.7 pp near--far difference in TB. In other words, the English terminal gap mainly reflects the different zero-shot starting points rather than a larger Phase~2 increment for the near condition.
+
+\begin{table*}[tb]
+\centering
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lllccccc}
+\hline
+\textbf{Target} & \textbf{Source} & \textbf{Label} & \textbf{Zero-shot (\%)} & \textbf{Terminal (\%)} & \textbf{TI (pp)} & \textbf{nTI (\%)} & \textbf{TB (pp)} \\ \hline
+English & Dutch   & near & $54.6\pm0.7$ & $64.9\pm0.8$ & $10.4\pm0.9$ & $22.8\pm1.8$ & $4.8\pm1.2$ \\
+English & Chinese & far  & $50.5\pm2.5$ & $61.3\pm1.2$ & $10.8\pm3.5$ & $21.6\pm6.0$ & $1.1\pm0.5$ \\
+Dutch   & English & near & $49.4\pm1.8$ & $73.1\pm0.5$ & $23.7\pm1.5$ & $46.8\pm1.5$ & $2.0\pm0.7$ \\
+Dutch   & Chinese & far  & $51.9\pm1.6$ & $72.2\pm0.7$ & $20.3\pm1.8$ & $42.2\pm2.6$ & $1.2\pm1.3$ \\ \hline
+\end{tabular}}
+\caption{Target-wise transfer summary across five seeds (mean $\pm$ sample SD). TI and TB are percentage-point differences, while nTI is the percentage of available accuracy headroom recovered during Phase~2. Near/far comparisons are made within each target block.}
+\label{tab:transfer-summary}
+\end{table*}
+
+For Dutch, the near condition has a 3.4 pp larger TI and a 4.6 pp larger nTI, but its terminal advantage is only 0.9 pp. The reason is visible in the starting scores: English pretraining begins 2.5 pp below Chinese pretraining on BLiMP-NL. The 3.4 pp TI contrast therefore combines a small terminal advantage with a larger zero-shot disadvantage in the opposite direction. This decomposition explains why the Dutch TI difference looks larger than the difference between the final models.
+
+\begin{table*}[tb]
+\centering
+\small
+\begin{tabular}{lccccc}
+\hline
+\textbf{Target} & \textbf{$\Delta$ Zero-shot} & \textbf{$\Delta$ Terminal} & \textbf{$\Delta$ TI} & \textbf{$\Delta$ nTI} & \textbf{$\Delta$ TB} \\ \hline
+English & $+4.1$ pp & $+3.7$ pp & $-0.4$ pp & $+1.2$ pp & $+3.7$ pp \\
+Dutch   & $-2.5$ pp & $+0.9$ pp & $+3.4$ pp & $+4.6$ pp & $+0.9$ pp \\ \hline
+\end{tabular}
+\caption{Near-minus-far contrasts within each target. The identity $\Delta\mathrm{TI}=\Delta\mathrm{Terminal}-\Delta\mathrm{Zero\mbox{-}shot}$ separates the contribution of the starting score from the terminal difference. $\Delta$TB equals $\Delta$Terminal because both conditions use the same target-only reference.}
+\label{tab:contrast-decomposition}
+\end{table*}
+
+TB gives a complementary view of the same runs by comparing each terminal sequential model with target-only training. All four mean TB values are positive. Since the sequential models also received a source-language phase, TB is best read as a terminal reference comparison under this training setup. For the near/far comparison, the English terminal/TB contrast is larger than the Dutch contrast, whereas TI is nearly tied for English and more separated for Dutch. The ordering therefore depends on which aspect of transfer is being measured.
+
+\section{Discussion}
+
+The main result is that the near/far pattern changes with both the target language and the quantity being measured. TI shows essentially no near-L1 advantage for English and a modest advantage for Dutch. Terminal scores and TB show the opposite emphasis: a clearer near advantage for English and only a small one for Dutch. Normalizing TI by the available headroom leaves this qualitative pattern unchanged. The zero-shot score, Phase~2 increment, and terminal score therefore describe different parts of the transfer process and are most informative when read together.
+
+This result is less uniform than the broad distance pattern reported by \citet{yadavalli-etal-2023-slabert}. At the same time, it is consistent with the broader observation in \citet{oba-etal-2023-second} and \citet{gogoulou-etal-2024-continual-clean} that sequential transfer depends on the source language, target language, training order, and experimental setup. These studies use different architectures, language sets, corpora, vocabulary treatments, and evaluations, so the comparison is conceptual rather than a direct replication. In our setting, coarse linguistic proximity alone is not enough to predict the full transfer pattern.
+
+Table~\ref{tab:diagnostic-status} summarizes what is held fixed and what varies with the source language. The target corpus, target-side updates, evaluation suite, architecture, and tokenizer are controlled within each comparison. Other source-side properties---including genealogy, script, token overlap, corpus composition, and Phase~1 exposure---move together with the near/far label. The fixed tokenizer therefore helps keep model structure constant, but does not by itself identify why Dutch and Chinese pretraining lead to different starting or terminal scores.
+
+\begin{table*}[tb]
+\centering
+\small
+\begin{tabular}{p{0.19\textwidth}p{0.14\textwidth}p{0.58\textwidth}}
+\hline
+\textbf{Factor} & \textbf{Treatment} & \textbf{Role in comparison} \\ \hline
+Target corpus and suite & Fixed within target & Near/far conditions for one target receive the same L2 data, updates, and evaluation. \\
+Architecture and tokenizer & Fixed globally & Model shape and token inventory do not vary, but realized token overlap can still differ by pair. \\
+Genealogy and script & Vary with source & These properties co-vary with the near/far label. \\
+Token/lexical overlap & Varies by pair & Shared tokens and lexicon may contribute independently of broader typological similarity. \\
+Phase~1 exposure & Varies by source & Source conditions contain different token totals and 540--1,234 updates. \\
+Corpus--benchmark overlap & Unmeasured & Any overlap would contribute to observed zero-shot variation. \\ \hline
+\end{tabular}
+\caption{Experimental controls and source-side factors relevant to the near/far comparison.}
+\label{tab:diagnostic-status}
+\end{table*}
+
+\section{Conclusion}
+
+We trained 35 models across seven conditions and five seeds to test whether a coarse near/far L1 contrast consistently predicts grammatical outcomes after sequential L1$\rightarrow$L2 training. Across the two target languages, it does not produce a single consistent pattern. For English, near and far conditions have almost identical Phase~2 increments even though their terminal scores differ. For Dutch, the near condition has a larger increment, while the terminal difference is small. Headroom normalization preserves the same qualitative result.
+
+These experiments therefore provide evidence against a uniform near-L1 advantage in this particular sequential training setup, rather than a general verdict on the CAH in human learners. Extending the question will require a broader language sample, more explicit typological sampling, better matched training budgets, and direct measurements or ablations of factors such as vocabulary overlap and script.
+
+
+\section*{Limitations}
+\label{sec:limitations}
+
+\textbf{Language sample and operationalization.} The experiments include English, Dutch, and Chinese, with near/far used as a categorical grouping rather than a measured scalar distance. In this three-language design, genealogy, script, likely lexical/token overlap, corpus composition, and source update count co-vary with that grouping. A broader language sample with explicit distance measures would be needed to estimate a general relationship between typological distance and transfer.
+
+\textbf{Tokenizer and overlap.} The fixed Qwen2.5 tokenizer keeps the vocabulary dimensionality identical across conditions, while also giving every model access to the same multilingual token inventory. The tied embedding matrix accounts for roughly 58\% of model parameters. Appendix~\ref{sec:appendix-twr} reports token-to-unit ratios, but these ratios measure tokenization efficiency rather than corpus-level vocabulary overlap. Direct overlap statistics or tokenizer/script ablations would be needed to separate these mechanisms.
+
+\textbf{Chinese counting and Byte Premium.} English and Dutch are counted in whitespace-delimited words, whereas Chinese is counted in characters. Our allocation then applies the published Byte Premium to these mixed units rather than matching UTF-8 bytes directly as defined by \citet{arnett-etal-2024-bit}. Under the rough byte assumptions in Appendix~\ref{sec:appendix-twr}, direct byte matching would correspond to about 82.5M Chinese characters rather than the 50.5M used here. The Chinese conditions therefore differ in both exposure and update count from a strictly byte-matched design.
+
+\textbf{Optimization and compute.} Phase~1 contains 916 updates for EN, 1,234 for NL, and 540 for ZH. The experiments therefore follow the intended effective-unit allocation rather than matching tokens, updates, bytes, or total compute across source languages. Phase~2 resets AdamW and the cosine schedule for every condition, with a new peak learning rate of $5\times10^{-4}$. This reset is consistent within each target comparison, although uninterrupted optimization could produce a different learning trajectory. The shared hyperparameters were not selected through a sweep.
+
+\textbf{Evaluation and metrics.} BLiMP, BLiMP-NL, and ZhoBLiMP differ in coverage and difficulty. We therefore compare near/far conditions within a target language rather than comparing absolute scores or TI magnitudes across suites. nTI adjusts for available accuracy headroom but does not place the suites on a common scale. We also did not audit corpus--benchmark overlap, so cross-direction zero-shot differences are not interpreted as a direct measure of directional language-to-language transfer.
+
+\textbf{Statistical uncertainty.} Each condition has five seeds, which gives only a coarse estimate of variability for small effects. ZH$\rightarrow$EN in particular has a TI standard deviation of 3.5 pp. We therefore report mean$\pm$SD together with the full per-seed values and interpret small between-condition differences descriptively.
+
+\section*{Acknowledgments}
+
+This work was carried out as an independent project during the first year of my undergraduate studies and was one of my first attempts to develop a research question into a complete experiment. I am grateful to the reviewers for their detailed feedback, which helped me improve the paper, and to the BabyLM community for providing the datasets, evaluation setting, and an opportunity to pursue this question.
+
+Generative AI tools, including DeepSeek and ChatGPT, were used throughout the project to discuss and critique the research question and experimental design, assist with training and analysis code, and translate, rewrite, and polish portions of the manuscript based on written drafts by. All AI-assisted suggestions, code, analyses, and text were critically reviewed and verified by me. I made the final research and experimental decisions, conducted the experiments and evaluation, verified the reported results and citations.
+
+\setlength{\bibsep}{0pt}
+\bibliography{custom}
+
+\appendix
+
+\clearpage
+\raggedbottom
+\section{Hyperparameters}
+\label{sec:appendix-hyper}
+
+The same configuration was used for all conditions. These GPT-2/BabyLM-style settings were chosen before the comparison and were not tuned separately for individual conditions.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{0.34\columnwidth}p{0.61\columnwidth}@{}}
+\hline
+\textbf{Hyperparameter} & \textbf{Value} \\ \hline
+Architecture & GPT-2 Small (12 layers, 768 hidden, 12 heads) \\
+Tokenizer & Qwen2.5-0.5B (fixed vocabulary: 151,665 entries) \\
+Model Parameters & 201,927,936 (all trainable) \\
+Tied Token Embedding & 116,478,720 parameters (57.7\% of total) \\
+Optimizer & AdamW ($\beta_1=0.9, \beta_2=0.999, \varepsilon=1\text{e-}8$) \\
+Peak Learning Rate & $5\times10^{-4}$, cosine decay \\
+Phase~2 Learning Rate & Fresh cosine schedule from $5\times10^{-4}$ (optimizer state not loaded) \\
+Weight Decay & 0.01 (excluding bias and LayerNorm) \\
+Gradient Clipping & max norm = 1.0 \\
+Effective Batch Size & 65,536 tokens/step (128 sequences $\times$ 512 tokens) \\
+Warmup Steps & 100 \\
+Precision & BF16 mixed precision \\
+Training Steps (Phase~1) & EN: 916, NL: 1,234, ZH: 540 \\
+Training Steps (Phase~2) & EN target: 916, NL target: 1,234 \\
+Random Seeds & 42, 123, 456, 789, 1024 \\ \hline
+\end{tabular}
+\caption{Complete shared hyperparameter configuration. Phase~2 loads model weights but not optimizer or scheduler state.}
+\label{tab:hyperparameters}
+\end{table}
+
+\section{Complete BLiMP Evaluation Results}
+\label{sec:appendix-results}
+
+Table~\ref{tab:all-scores} reports the evaluation accuracy of all 35 models on the three language-specific suites. Each entry is the mean accuracy over the subtasks exposed by that suite. Phase~1 models (P1) are the L1-only models, and Phase~2 models (P2) are the sequential transfer models.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llcccc}
+\hline
+\textbf{Phase} & \textbf{Condition} & \textbf{Seed} & \textbf{EN BLiMP} & \textbf{NL BLiMP} & \textbf{ZH BLiMP} \\ \hline
+P1 & en & 42   & 60.83\% & 48.78\% & 47.55\% \\
+P1 & en & 123  & 58.91\% & 47.26\% & 48.93\% \\
+P1 & en & 456  & 60.91\% & 51.60\% & 48.39\% \\
+P1 & en & 789  & 60.59\% & 48.63\% & 50.45\% \\
+P1 & en & 1024 & 59.47\% & 50.74\% & 45.27\% \\ \cline{2-6}
+P1 & nl & 42   & 55.08\% & 70.52\% & 51.39\% \\
+P1 & nl & 123  & 53.81\% & 71.13\% & 51.73\% \\
+P1 & nl & 456  & 55.47\% & 71.32\% & 48.79\% \\
+P1 & nl & 789  & 54.18\% & 70.29\% & 51.67\% \\
+P1 & nl & 1024 & 54.25\% & 71.90\% & 49.60\% \\ \cline{2-6}
+P1 & zh & 42   & 48.72\% & 50.32\% & 62.10\% \\
+P1 & zh & 123  & 51.70\% & 51.96\% & 63.24\% \\
+P1 & zh & 456  & 50.58\% & 54.37\% & 62.81\% \\
+P1 & zh & 789  & 47.40\% & 50.91\% & 63.35\% \\
+P1 & zh & 1024 & 53.90\% & 52.10\% & 64.45\% \\ \hline
+P2 & nl2en & 42   & 65.17\% & 55.48\% & 49.22\% \\
+P2 & nl2en & 123  & 64.19\% & 55.41\% & 54.85\% \\
+P2 & nl2en & 456  & 65.05\% & 52.69\% & 52.24\% \\
+P2 & nl2en & 789  & 64.08\% & 54.00\% & 50.94\% \\
+P2 & nl2en & 1024 & 66.15\% & 56.72\% & 50.75\% \\ \cline{2-6}
+P2 & zh2en & 42   & 61.69\% & 49.70\% & 53.62\% \\
+P2 & zh2en & 123  & 59.45\% & 50.38\% & 53.68\% \\
+P2 & zh2en & 456  & 62.11\% & 48.94\% & 56.22\% \\
+P2 & zh2en & 789  & 62.44\% & 48.66\% & 54.01\% \\
+P2 & zh2en & 1024 & 60.68\% & 48.36\% & 50.84\% \\ \cline{2-6}
+P2 & en2nl & 42   & 58.69\% & 72.30\% & 47.64\% \\
+P2 & en2nl & 123  & 58.45\% & 72.88\% & 50.78\% \\
+P2 & en2nl & 456  & 57.71\% & 73.58\% & 49.44\% \\
+P2 & en2nl & 789  & 57.00\% & 73.37\% & 52.60\% \\
+P2 & en2nl & 1024 & 57.46\% & 73.23\% & 48.00\% \\ \cline{2-6}
+P2 & zh2nl & 42   & 54.05\% & 72.14\% & 52.64\% \\
+P2 & zh2nl & 123  & 53.45\% & 72.50\% & 54.56\% \\
+P2 & zh2nl & 456  & 54.21\% & 72.31\% & 50.90\% \\
+P2 & zh2nl & 789  & 53.28\% & 73.07\% & 52.29\% \\
+P2 & zh2nl & 1024 & 53.13\% & 71.07\% & 53.56\% \\ \hline
+\end{tabular}
+}
+\caption{Complete BLiMP evaluation scores for all 35 models (7 conditions $\times$ 5 seeds) across all three language test suites. P1 = Phase~1 monolingual; P2 = Phase~2 transfer.}
+\label{tab:all-scores}
+\end{table}
+
+\section{Zero-Shot and Transfer Increment per Seed}
+\label{sec:appendix-ti}
+
+Table~\ref{tab:zs-per-seed} gives the per-seed zero-shot scores used in Table~\ref{tab:phase1-matrix}. Table~\ref{tab:ti-detail} shows the corresponding TI values, and Table~\ref{tab:nti-detail} gives the headroom-normalized TI for each seed.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\hline
+\textbf{Seed} & \textbf{NL$\rightarrow$EN ZS} & \textbf{ZH$\rightarrow$EN ZS} & \textbf{EN$\rightarrow$NL ZS} & \textbf{ZH$\rightarrow$NL ZS} \\ \hline
+42   & 55.08\% & 48.72\% & 48.78\% & 50.32\% \\
+123  & 53.81\% & 51.70\% & 47.26\% & 51.96\% \\
+456  & 55.47\% & 50.58\% & 51.60\% & 54.37\% \\
+789  & 54.18\% & 47.40\% & 48.63\% & 50.91\% \\
+1024 & 54.25\% & 53.90\% & 50.74\% & 52.10\% \\ \hline
+\textbf{Mean} & \textbf{54.56\%} & \textbf{50.46\%} & \textbf{49.40\%} & \textbf{51.93\%} \\ \hline
+\end{tabular}
+}
+\caption{Zero-shot cross-lingual BLiMP scores per seed. ZS = Phase~1 L1-only model evaluated on an unseen L2 BLiMP suite.}
+\label{tab:zs-per-seed}
+\end{table}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\hline
+\textbf{Seed} & \textbf{TI(NL$\rightarrow$EN)} & \textbf{TI(ZH$\rightarrow$EN)} & $\boldsymbol{\Delta}$ \\ \hline
+42   & +10.09 & +12.97 & $-$2.88 \\
+123  & +10.38 & +7.75  & +2.63 \\
+456  & +9.58  & +11.53 & $-$1.95 \\
+789  & +9.90  & +15.04 & $-$5.14 \\
+1024 & +11.90 & +6.78  & +5.12 \\ \hline
+\textbf{Mean} & \textbf{+10.37} & \textbf{+10.81} & \textbf{$-$0.44} \\
+$\pm$ SD & $\pm$0.90 & $\pm$3.49 & --- \\ \hline
+\end{tabular}
+
+\vspace{4pt}
+
+\begin{tabular}{lccc}
+\hline
+\textbf{Seed} & \textbf{TI(EN$\rightarrow$NL)} & \textbf{TI(ZH$\rightarrow$NL)} & $\boldsymbol{\Delta}$ \\ \hline
+42   & +23.52 & +21.82 & +1.70 \\
+123  & +25.62 & +20.54 & +5.08 \\
+456  & +21.98 & +17.94 & +4.04 \\
+789  & +24.74 & +22.16 & +2.58 \\
+1024 & +22.49 & +18.97 & +3.52 \\ \hline
+\textbf{Mean} & \textbf{+23.67} & \textbf{+20.29} & \textbf{+3.38} \\
+$\pm$ SD & $\pm$1.52 & $\pm$1.81 & --- \\ \hline
+\end{tabular}
+\caption{Transfer Increment per seed for both target languages (all values in percentage points). $\Delta$ = near-L1 TI $-$ far-L1 TI.}
+\label{tab:ti-detail}
+\end{table}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\hline
+\textbf{Seed} & \textbf{nTI(NL$\rightarrow$EN)} & \textbf{nTI(ZH$\rightarrow$EN)} & \textbf{nTI(EN$\rightarrow$NL)} & \textbf{nTI(ZH$\rightarrow$NL)} \\ \hline
+42   & 22.46\% & 25.29\% & 45.92\% & 43.92\% \\
+123  & 22.47\% & 16.05\% & 48.58\% & 42.76\% \\
+456  & 21.51\% & 23.33\% & 45.41\% & 39.32\% \\
+789  & 21.61\% & 28.59\% & 48.16\% & 45.14\% \\
+1024 & 26.01\% & 14.71\% & 45.66\% & 39.60\% \\ \hline
+\textbf{Mean} & \textbf{22.81\%} & \textbf{21.59\%} & \textbf{46.75\%} & \textbf{42.15\%} \\
+$\pm$ SD & $\pm$1.84 & $\pm$6.00 & $\pm$1.50 & $\pm$2.60 \\ \hline
+\end{tabular}
+}
+\caption{Headroom-normalized Transfer Increment, $\mathrm{nTI}=(A_{\mathrm{term}}-A_{\mathrm{ZS}})/(1-A_{\mathrm{ZS}})$, computed per seed.}
+\label{tab:nti-detail}
+\end{table}
+
+\section{Token-to-Word Ratio Analysis}
+\label{sec:appendix-twr}
+
+This appendix reports the Token-to-Word Ratio (TWR) measurements from our preliminary data diagnostics. These measurements motivated the use of the Qwen2.5 tokenizer instead of the standard GPT-2 BPE tokenizer.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccc}
+\hline
+\textbf{Language} & \textbf{Counting Unit} & \textbf{GPT-2 TWR} & \textbf{Qwen2.5 TWR} \\ \hline
+English  & words (whitespace)   & 1.21  & 1.20  \\
+Dutch    & words (whitespace)   & 2.16  & 1.70  \\
+Chinese  & characters           & 2.17  & 0.70  \\
+Chinese  & words (jieba)        & 5.05  & 2.87  \\ \hline
+\end{tabular}
+}
+\caption{TWR comparison between the GPT-2 BPE tokenizer and Qwen2.5-0.5B. TWR is the number of tokens produced per language-specific counting unit; lower values indicate less fragmentation. For Chinese, both character-level and jieba-word-level values are shown.}
+\label{tab:twr}
+\end{table}
+
+With GPT-2 BPE, Chinese has a TWR of 2.17 per character and 5.05 per jieba-segmented word. This corresponds to roughly 2--3 byte-level tokens per Chinese character and reduces a 512-token context to about 236 characters. Qwen2.5 lowers the character-level TWR to 0.70 (2.87 per jieba word), giving an effective context of roughly 731 characters and allowing multi-character subword units to remain intact more often. This reduction in fragmentation was the main reason for choosing Qwen2.5 despite increasing the model size from about 124M to 202M parameters.
+
+Table~\ref{tab:training-budget} shows the resulting token, byte, and update counts at the 50M effective-word scale.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\hline
+\textbf{Language} & \textbf{Counting Units} & \textbf{Qwen2.5 Tokens} & \textbf{Est.\ UTF-8 Bytes} & \textbf{Training Steps} \\ \hline
+English  & 50.0M words   & $\sim$60.0M  & $\sim$250 MB & 916   \\
+Dutch    & 47.5M words   & $\sim$80.8M  & $\sim$238 MB & 1,234 \\
+Chinese  & 50.5M chars   & $\sim$35.4M  & $\sim$152 MB & 540   \\ \hline
+\end{tabular}
+}
+\caption{Estimated training budgets per phase. Steps assume effective batch size 65,536 tokens/step. UTF-8 byte estimates use $\sim$5 bytes/word (EN, NL) and $\sim$3 bytes/character (ZH).}
+\label{tab:training-budget}
+\end{table}
+
+Under the rough byte approximation used here, direct byte-level matching would allocate about 82.5M Chinese characters per phase (247 MB), rather than the 50.5M used in the experiments. The Chinese conditions therefore contain fewer estimated bytes and fewer updates than this alternative allocation. Because that difference affects both the L1 starting state and the later L2 trajectory, it does not translate into a simple one-direction correction of TI or TB.
+
+\end{document}

@@ -152,6 +152,7 @@ src/analyze.py                TI/nTI/TB and per-seed arithmetic
 src/tokenizer_diagnostics.py  sample-hashed TWR/token-overlap diagnostics
 scripts/                      setup, orchestration, evaluation, analysis
 results/paper_blimp_scores.csv  Appendix Table 8 score snapshot
+latex/                        source file of the paper
 paper.pdf                     camera-ready manuscript
 ```
 
@@ -171,4 +172,6 @@ paper.pdf                     camera-ready manuscript
 
 The paper acknowledges the reviewers and the BabyLM community. Training data,
 tokenizers, and the evaluation harness retain their respective upstream terms.
+
+The paper text is licensed under CC BY 4.0.
 Repository code is released under the [MIT License](LICENSE).
