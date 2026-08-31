@@ -1,0 +1,75 @@
+# BabyLM 2026 — .gitignore
+
+# Model checkpoints (large binary files)
+checkpoints/
+
+# Cached datasets
+data_cache/
+
+# Logs
+logs/
+
+# Raw evaluation results (large); keep the compact manuscript snapshot.
+results/*
+!results/paper_blimp_scores.csv
+!results/README.md
+
+# babylm-eval (nested git repo, cloned separately)
+babylm-eval/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AutoDL / cloud specific
+configs/batch_config.json
+configs/proxy.env
+
+# Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Large PDFs
+Babylm.pdf
+
+# Chinese research notes (local only)
+面向*.md
+语言学习*.md
+
+# Claude Code
+.claude/
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.synctex*
+
+# Misc
+*.tmp
+*.log
+*.tar
